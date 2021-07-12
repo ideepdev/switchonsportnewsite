@@ -512,15 +512,11 @@ function after_submission_5($entry, $form ) {
 }
 
 add_action( 'template_redirect', 'testFunc' );
-
 function testFunc(){
 	global $wpdb;
-	
     if(isset($_POST['testButton'])) {
 		$season = $_POST['seasonValue'];
-		
 		$currentUserID = get_current_user_id();
-		
 		 $args = array(
             'author'         =>  $currentUserID,
             'post_status'    => 'any',
@@ -529,10 +525,7 @@ function testFunc(){
             'post_type'      => 'sp_player',
             'posts_per_page' => -1
         );
-		
 		$my_post_id = wp_insert_post($args, true);
-		
-	
 	}
 }
 
@@ -551,7 +544,6 @@ function playerInfoFinder() {
 		}
 	}
 }
-
 add_shortcode('player_info', 'playerInfoFinder');
 
 function tournamentDisplay($atts) {
@@ -570,7 +562,6 @@ function tournamentDisplay($atts) {
 		}
 	}
 }
-
 add_shortcode('tournament', 'tournamentDisplay');
 
 function tournament_countdown_timer($atts) {
@@ -592,15 +583,9 @@ function tournament_countdown_timer($atts) {
 		echo "<h5>Tournament has closed</h5>";
 	}
 }
-
-
 add_shortcode('tournament_countdown', 'tournament_countdown_timer');
-
-
 	
-
 #
-## Code by Deepu V.
 ## Populate season for player registration
 add_filter( 'gform_pre_render_2', 'populate_league' );
 add_filter( 'gform_pre_validation_2', 'populate_league' );
@@ -674,6 +659,53 @@ function add_custom_user_league( $user_id, $feed, $entry, $user_pass ) {
     $currentUserPost = get_posts( $args );
     foreach( $currentUserPost as $post ){
         wp_set_object_terms( $post->ID, (int) $entry[ $leagueFieldID ] , 'sp_league' );
+    }
+
+}
+
+
+#
+## Add season to player
+add_action( 'gform_user_registered', 'add_custom_user_season', 10, 4 );
+function add_custom_user_season( $user_id, $feed, $entry, $user_pass ) {
+
+    if( $feed['meta']['role'] !== 'sp_team_manager' ){
+        return;
+    }
+
+    $leagueFieldID = 0;
+    $form = GFAPI::get_form( $entry['form_id'] );
+    if( false === $form ){
+        return;
+    }
+
+    foreach ( $form['fields'] as $field ) {
+        if ( $field->type == 'select' && strpos( $field->cssClass, 'populate-season' ) !== false ) {
+            $leagueFieldID = $field->id;
+        }
+    }
+
+    if( $leagueFieldID == 0 ){
+        return;
+    }
+
+    if( empty($user_id) ){
+        return;
+    }
+
+    $args = array(
+        'author'         =>  $user_id,
+        'post_status'    => 'any',
+        'orderby'        =>  'post_date',
+        'order'          =>  'ASC',
+        'post_type'      => 'sp_player',
+        'posts_per_page' => -1
+    );
+
+    // Player
+    $currentUserPost = get_posts( $args );
+    foreach( $currentUserPost as $post ){
+        wp_set_object_terms( $post->ID, (int) $entry[ $leagueFieldID ] , 'sp_season' );
     }
 
 }
