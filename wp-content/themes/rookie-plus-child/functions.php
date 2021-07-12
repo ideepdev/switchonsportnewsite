@@ -599,7 +599,81 @@ add_shortcode('tournament_countdown', 'tournament_countdown_timer');
 
 	
 
+#
+## Code by Deepu V.
+## Populate season for player registration
+add_filter( 'gform_pre_render_2', 'populate_league' );
+add_filter( 'gform_pre_validation_2', 'populate_league' );
+add_filter( 'gform_pre_submission_filter_2', 'populate_league' );
+add_filter( 'gform_admin_pre_render_2', 'populate_league' );
+function populate_league( $form ) {
+ 
+    foreach ( $form['fields'] as $field ) {
+ 
+        if ( $field->type != 'select' || strpos( $field->cssClass, 'populate-league' ) === false ) {
+            continue;
+        }
 
+        $leagues = get_terms( 'sp_league', [
+           'hide_empty' => false
+        ] );
 
+        $choices = array();
+ 
+        foreach ( $leagues as $league ) {
+            $choices[] = array( 'text' => $league->name, 'value' => $league->term_id );
+        }
 
+        $field->placeholder = 'Select a league';
+        $field->choices = $choices;
+ 
+    }
+ 
+    return $form;
+}
 
+#
+## Add league to player
+add_action( 'gform_user_registered', 'add_custom_user_league', 10, 4 );
+function add_custom_user_league( $user_id, $feed, $entry, $user_pass ) {
+
+    if( $feed['meta']['role'] !== 'sp_team_manager' ){
+        return;
+    }
+
+    $leagueFieldID = 0;
+    $form = GFAPI::get_form( $entry['form_id'] );
+    if( false === $form ){
+        return;
+    }
+
+    foreach ( $form['fields'] as $field ) {
+        if ( $field->type == 'select' && strpos( $field->cssClass, 'populate-league' ) !== false ) {
+            $leagueFieldID = $field->id;
+        }
+    }
+
+    if( $leagueFieldID == 0 ){
+        return;
+    }
+
+    if( empty($user_id) ){
+        return;
+    }
+
+    $args = array(
+        'author'         =>  $user_id,
+        'post_status'    => 'any',
+        'orderby'        =>  'post_date',
+        'order'          =>  'ASC',
+        'post_type'      => 'sp_player',
+        'posts_per_page' => -1
+    );
+
+    // Player
+    $currentUserPost = get_posts( $args );
+    foreach( $currentUserPost as $post ){
+        wp_set_object_terms( $post->ID, (int) $entry[ $leagueFieldID ] , 'sp_league' );
+    }
+
+}
