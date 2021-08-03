@@ -1,0 +1,160 @@
+.c-box{
+  display: inline-table;
+  width: 31%;
+  background: #2A2A34;
+  padding: 30px;
+  margin-right: 20px;
+  margin-bottom: 20px;
+  box-shadow: 6px -2px 20px 3px #000;
+}
+.c-box:nth-child(3n) {
+  margin-right: 0;
+}
+body .c-box h5{
+  margin-top:0;
+  text-align:center;
+  font-weight: bold;
+  border-bottom:1px solid #fff;
+  padding-bottom: 7px;
+}
+body .c-box p{
+  text-align:center;
+  font-style:italic;
+}
+.season-form{
+  max-width: 400px;
+}
+body .c-box a,
+.season-form a{
+  padding: 10px;
+  float: left;
+  width: 100%;
+  text-align: center;
+  background-image: radial-gradient(ellipse farthest-corner at center 0px,#ffc400 -150%,#ffc400 45%, #ff7f00 85%);
+  font-size: 20px;
+  outline:0;
+}
+.season-form a{
+  margin:10px 0;
+}
+body .c-box a.full-slots{
+  background: gray;
+}
+.season-form select[name="input_season"]{
+  float: left;
+  width: 100%;
+  padding: 15px;
+  margin:10px 0;
+  background:#2A2A34;
+  color:#fff;
+}
+.season-form .spacer{
+  float: left;
+  width: 100%;
+}
+.loading-image{
+  /* float: left;
+  width: 100%;
+  max-width: 400px;
+  text-align: center; */
+  display:none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+}
+.loading-image img{
+  width:50px;
+}
+.validation-error select[name="input_season"]{
+  color: red;
+  border: 1px solid red;
+}
+
+#sosn-popup.overlay {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #00000021;
+  transition: opacity 500ms;
+  visibility: hidden;
+  opacity: 0;
+  z-index: 999;
+}
+#sosn-popup.overlay.target {
+  visibility: visible;
+  opacity: 1;
+}
+
+#sosn-popup .popup {
+  padding: 20px;
+  background: #2A2A34;
+  border-radius: 5px;
+  width: 30%;
+  position: relative;
+  transition: all 5s ease-in-out;
+  color: #000;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  max-width: 420px;
+  border: 2px solid #ffc400;
+  min-height: 170px;
+}
+#sosn-popup .popup h2{
+  text-align: right;
+  line-height: 16px;
+  margin-bottom: 10px;
+}
+
+#sosn-popup .popup .close {
+  transition: all 200ms;
+  font-size: 30px;
+  font-weight: bold;
+  text-decoration: none;
+  color: #ffc400 !important; /** allready use Impoatant**/
+}
+#sosn-popup .popup .close:hover {
+  color: #06D85F;
+}
+#sosn-popup .popup .content {
+  max-height: 30%;
+  overflow: auto;
+}
+.c-box  a.active-button{
+  display:none;
+}
+.c-box.activated a.active-button{
+  display:block;
+  background-image: radial-gradient(ellipse farthest-corner at center 0px,green -150%,green 45%, #000 100%);
+}
+.c-box.activated a.show-details-popup,
+.c-box.activated a.full-slots,
+.active-button img,
+.active-button.processing span{
+  display:none;
+}
+.active-button img{
+  width:20px;
+  float: none;
+  margin: 0 auto;
+}
+.active-button.processing img{
+  display:block;
+}
+.active-button.processing{
+  pointer-events: none;
+}
+@media only screen and (max-width: 787px) {
+  .c-box{
+    width: 100%;
+    margin-right:0;
+    margin-bottom:10px;
+  }
+  #sosn-popup .popup{
+    width: 80%;
+  }
+}

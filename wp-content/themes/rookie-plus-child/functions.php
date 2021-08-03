@@ -359,25 +359,27 @@ if ( !is_user_logged_in() ) {
 }
 }
 
-//Restrict access to admin area...
-function restrict_admin() {
-    if ( ! current_user_can( 'manage_options' ) ) {
-        wp_redirect( home_url() );
-        exit;
+if( !(isset($_POST['action']) && $_POST['action'] == "update_profile_data") && !(isset($_POST['action']) && $_POST['action'] == "remove_league_season") ){
+    //Restrict access to admin area...
+    function restrict_admin() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_redirect( home_url() );
+            exit;
+        }
     }
-}
 
-add_action( 'admin_init', 'restrict_admin', 1 );
+    add_action( 'admin_init', 'restrict_admin', 1 );
 
-//Hide admin bar 
-add_action( 'init', 'hide_admin_bar' );
-function hide_admin_bar() {
-	if ( ! current_user_can( 'manage_options' ) ) {
-        echo '<style>
-   			#wpadminbar {
-       	 	display: none !important;
-    		} 
-  		    </style>';
+    //Hide admin bar 
+    add_action( 'init', 'hide_admin_bar' );
+    function hide_admin_bar() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            echo '<style>
+                #wpadminbar {
+                display: none !important;
+                } 
+                </style>';
+        }
     }
 }
 
@@ -420,23 +422,6 @@ if(isset($_POST['registerSeasonButton'])){
 			$wpdb->update('wp_term_taxonomy', array('count' => $count), array('term_id' => $seasonID)); 
 	}
 }
-
-
-//Changing "My Results" to "Confirm Score" and "SUMIT YOUR RESULTS" to "SUBMIT YOUR SCORES"
-function change_text() {
-    ?>
-
-       <script>
-         let scoresLink = document.querySelector('a[data-sp-tab="user_results"]');
-	     scoresLink.innerHTML = "Confirm Scores";
-		 let scoresMessages = document.querySelectorAll('.sp-table-caption');
-		 scoresMessages.forEach((message) => {
-			 message.innerHTML = "SUBMIT YOUR SCORES";
-		 });
-        </script>
-    <?php
-}
-add_action('wp_footer', 'change_text');
 
 //Getting tournament/league count
 function tournamentCountFunction( ) {
@@ -536,14 +521,8 @@ function playerInfoFinder() {
 	echo get_avatar( $current_user->ID, 128 );
 	$player_result = $wpdb->get_row("SELECT * FROM wp_posts WHERE post_author='$current_user->ID' AND post_type='sp_player'");
 	echo do_shortcode("[player_details id=\"$player_result->ID\"]");
-	$eventResults = $wpdb->get_results("SELECT * FROM wp_posts WHERE post_name LIKE '%$player_username%' AND post_type='sp_event'");
-	echo "<h4>Games: </h4>";
-	foreach($eventResults as $event) {
-		if (strpos($event->post_name, 'trashed') == false){
-			echo "<h4>Game: <a href='$event->post_name'>" . $event->post_title . "</a></h4>";
-		}
-	}
 }
+
 add_shortcode('player_info', 'playerInfoFinder');
 
 function tournamentDisplay($atts) {
@@ -709,3 +688,227 @@ function add_custom_user_season( $user_id, $feed, $entry, $user_pass ) {
     }
 
 }
+
+add_filter( 'gform_pre_render_6', 'populate_leagues' );
+add_filter( 'gform_pre_validation_6', 'populate_leagues' );
+add_filter( 'gform_pre_submission_filter_6', 'populate_leagues' );
+add_filter( 'gform_admin_pre_render_6', 'populate_leagues' );
+function populate_leagues( $form ) {
+	
+    foreach ( $form['fields'] as $field ) {
+ 
+        if ( $field->type != 'select' || strpos( $field->cssClass, 'populate-league' ) === false ) {
+            continue;
+        }
+
+        $leagues = get_terms( 'sp_league', [
+           'hide_empty' => false
+        ] );
+
+        $choices = array();
+ 
+        foreach ( $leagues as $league ) {
+            $choices[] = array( 'text' => $league->name, 'value' => $league->term_id );
+        }
+
+        $field->placeholder = 'Select a League';
+        $field->choices = $choices;
+ 
+    }
+ 
+    return $form;
+}
+
+add_action( 'gform_after_submission_6', 'after_submission_6', 10, 2 );
+function after_submission_6($entry, $form ) {
+		
+    foreach ( $form['fields'] as $field ) {
+ 
+        if ( $field->type != 'select' || strpos( $field->cssClass, 'populate-league' ) === false ) {
+            continue;
+        }
+		
+        if( empty( $entry[ $field->id ]) ){
+            continue;
+        }
+
+        $currentUserID = get_current_user_id();
+
+        if( empty($currentUserID) ){
+            continue;
+        }
+
+        $args = array(
+            'author'         =>  $currentUserID,
+            'post_status'    => 'any',
+            'orderby'        =>  'post_date',
+            'order'          =>  'ASC',
+            'post_type'      => 'sp_player',
+            'posts_per_page' => -1
+        );
+
+        // Player
+        $currentUserPost = get_posts( $args );
+        foreach( $currentUserPost as $post ){
+            wp_set_object_terms( $post->ID, (int) $entry[ $field->id  ] , 'sp_league' );
+        }
+    }
+ 	seasonRegistrationNotification(rgar( $entry, '3' ));
+    return $form;
+	
+}
+
+//Generate custom dynamic link for the 'My Profile' page
+function myProfileAndHide() {
+	$current_user = wp_get_current_user();
+	$username = $current_user->user_login;
+	//Pass username to JS script
+	echo "<div id='passedVariable' style='display: none;'>" . $username . "</div>";
+	?>
+       <script>
+		   window.onload = function(){
+			//Displaying custom link for My Profile menu item.
+			let userName = document.querySelector('#passedVariable');
+			userName = userName.innerHTML;
+			let link = document.querySelector(".menu-item-8515 .elementor-item");
+			link.href = "http://staging-switchonsportnewsite.kinsta.cloud/archives/player/" + userName;
+			//Hiding the league selector drop down. 
+			let leagueSelectorDisplay = document.querySelector(".elementor-element-786e4f1");
+			if (leagueSelectorDisplay) {
+				leagueSelectorDisplay.style.display = "none";
+			}
+			//Hiding the player selector.
+			let playerSelectorDisplay = document.querySelector(".sp-section-content");
+			if (playerSelectorDisplay) {
+				playerSelectorDisplay.style.display = "none";
+			}
+		}
+        </script>
+    <?php
+}
+
+add_action('wp_footer', 'myProfileAndHide');
+
+//Display league names and count with 'Join Now' button leading to join page
+function leagueTableDisplay() {
+	global $wpdb;
+	//Grab all leagues within the DB
+	$leagueResults = $wpdb->get_results("SELECT * FROM wp_term_taxonomy WHERE taxonomy='sp_league'");
+	foreach($leagueResults as $result) {
+		//Grab league ID
+		$league_id = $result->term_id;
+		//Grab count of league participation
+		$count = $result->count;
+		//Grab the specific league
+		$league_row = $wpdb->get_row("SELECT * FROM wp_terms WHERE term_id='$league_id'");
+		//If count exceeds participation limit then display that the tournament is full
+		if ($count >= 10) {
+			echo "<div class='competiton-card'><p class='leagueName'>" . $league_row->name . "</p><p class='count'>" . $count . " player(s)</p><p class='fullMessage'>Sorry, tournament is full</p></div>";
+		} else {
+			echo "<div class='competiton-card'><p class='leagueName'>" . $league_row->name . "</p><p class='count'>" . $count . " player(s)</p><form action='http://staging-switchonsportnewsite.kinsta.cloud/play-now'><input type='submit' value='Join Now' /></form></div>";
+		}
+	}
+}
+
+add_shortcode('leagues', 'leagueTableDisplay');
+function getTournamentDate( ) {
+	global $post;
+
+	$round_1 = get_post_meta($post->ID, "round_1", true);
+	$round_2 = get_post_meta($post->ID, "round_2", true);
+	$round_3 = get_post_meta($post->ID, "round_3", true);
+	$round_4 = get_post_meta($post->ID, "round_4", true);
+	if($round_4){
+		$round_name = 'Round 4';
+		$date = date('F j, Y g:i a', strtotime($round_4));
+	    $convert_date = date('Y-m-d', strtotime($round_4));
+		$timerdate = date("F j, Y", strtotime($convert_date.'+5 days'));
+
+	}elseif($round_3){
+		$round_name = 'Round 3';
+		$date = date('F j, Y g:i a', strtotime($round_3));
+	    $convert_date = date('Y-m-d', strtotime($round_3));
+		$timerdate = date("F j, Y", strtotime($convert_date.'+5 days'));
+	}elseif($round_2){
+		$round_name = 'Round 2';
+		$date = date('F j, Y g:i a', strtotime($round_2));
+	    $convert_date = date('Y-m-d', strtotime($round_2));
+		$timerdate = date("F j, Y", strtotime($convert_date.'+5 days'));
+	}elseif($round_1){
+		$round_name = 'Round 1';
+		$date = date('F j, Y g:i a', strtotime($round_1));
+	    $convert_date = date('Y-m-d', strtotime($round_1));
+		$timerdate = date("F j, Y", strtotime($convert_date.'+5 days'));
+	}else{
+		$round_name = 'There is no date';
+		$date = 'There is no date';
+	    $convert_date = 'There is no date';
+		$timerdate = 'There is no date';
+	}
+
+	$meta = get_post_meta($post->ID, "sp_events", true);
+	//echo "<h1>TIMER HERE ".$meta[0]['date']."<span class ='timer'></span></h1>";
+	echo "<h2>TIMER HERE : ".$date."<span class ='timer'></span></h2>";
+?>
+<style type="text/css">
+	@font-face {font-family: "NTF Grand"; src: url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.eot"); src: url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.eot?#iefix") format("embedded-opentype"), url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.woff2") format("woff2"), url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.woff") format("woff"), url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.ttf") format("truetype"), url("//db.onlinewebfonts.com/t/b30ffe63cc57ffdba315d296d0ca85b0.svg#NTF-Grand-Regular") format("svg"); }
+	.timer{
+		/*font-size:10vmin;*/
+		padding: 60px;
+		color:#fff;
+		text-shadow:-1px -1px 0px #2cf,
+					1px -1px 0px #2cf,
+					-1px 1px 0px #2cf,
+					1px 1px 0px #2cf,
+					0px 0px 15px #fff,
+					0px 0px 20px #5af,
+					0px 0px 25px #5af,
+					0px 0px 30px #5af,
+					0px 0px 35px #5af,
+					0px 0px 40px #5af;
+	}
+</style>
+<script type="text/javascript">
+
+    let deadline ='<?php echo $timerdate." 00:00:00";?>';
+	let round_name ='<?php echo $round_name;?>';
+    function getTimeRemaining(endtime){
+        let t = Date.parse(endtime) - Date.now();
+        var hundreth = Math.floor((t % 1000)/ 10);
+        var seconds = Math.floor((t / 1000) % 60);
+        var minutes = Math.floor((t / 1000 / 60) % 60);
+        var hours = Math.floor((t / (1000 * 60 * 60)) % 24);
+        var days = Math.floor(t / (1000 * 60 * 60 * 24));
+            
+        return{
+        'total':t,
+        'days': days,
+        'hours': hours,
+        'minutes': minutes,
+        'seconds': seconds
+        };
+    }
+        
+    function initializeClock(id, endtime){
+            var clock = document.getElementById(id);
+            var timerDisplay = document.querySelector(".timer");
+            function updateClock(){
+                var t   = getTimeRemaining(endtime);
+                timerDisplay.innerText = t.days + ":" + ('0' + t.hours).slice(-2) + ":" + ('0' + t.minutes).slice(-2) + ":" + ('0' + t.seconds).slice(-2) ;
+                            
+                if(t.total<=0){
+                   // clearInterval(timeInterval);
+					timerDisplay.innerText = "Hi "+round_name+" Time Is Over" ;
+                }
+            }
+            updateClock();
+            let timeInterval = setInterval(updateClock,1000);
+    }
+initializeClock("timer", deadline);
+
+</script>
+<?php
+	//print_r($meta);
+}
+
+add_shortcode('tournamentdate', 'getTournamentDate');
